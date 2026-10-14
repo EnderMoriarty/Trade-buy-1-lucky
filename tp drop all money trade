@@ -1,0 +1,266 @@
+-- === YBA AUTO — ТП + СБРОС + ТРЕЙД ===
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local VIM = game:GetService("VirtualInputManager")
+local player = Players.LocalPlayer
+
+if CoreGui:FindFirstChild("YBAFullAuto") then
+    CoreGui.YBAFullAuto:Destroy()
+end
+
+-- === GUI ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "YBAFullAuto"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 260, 0, 180)
+Frame.Position = UDim2.new(0, 50, 0, 100)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderSizePixel = 2
+Frame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -30, 0, 25)
+Title.Text = "  YBA AUTO"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BorderSizePixel = 0
+Title.Parent = Frame
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 30, 0, 25)
+ToggleBtn.Position = UDim2.new(1, -30, 0, 0)
+ToggleBtn.Text = "_"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 16
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.Parent = Frame
+
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, 0, 1, -25)
+Content.Position = UDim2.new(0, 0, 0, 25)
+Content.BackgroundTransparency = 1
+Content.Parent = Frame
+
+local NameInput = Instance.new("TextBox")
+NameInput.Size = UDim2.new(0, 220, 0, 30)
+NameInput.Position = UDim2.new(0, 20, 0, 5)
+NameInput.PlaceholderText = "Ник (первые буквы)"
+NameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+NameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+NameInput.Font = Enum.Font.SourceSans
+NameInput.TextSize = 14
+NameInput.ClearTextOnFocus = false
+NameInput.Parent = Content
+
+local StartBtn = Instance.new("TextButton")
+StartBtn.Size = UDim2.new(0, 220, 0, 45)
+StartBtn.Position = UDim2.new(0, 20, 0, 45)
+StartBtn.Text = "🚀 ТП + СБРОС + ТРЕЙД"
+StartBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 70)
+StartBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+StartBtn.Font = Enum.Font.SourceSansBold
+StartBtn.TextSize = 13
+StartBtn.Parent = Content
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -20, 0, 50)
+StatusLabel.Position = UDim2.new(0, 10, 0, 100)
+StatusLabel.Text = "Готов"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+StatusLabel.Parent = Content
+
+-- === СВОРАЧИВАНИЕ ===
+local isMinimized = false
+ToggleBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        Content.Visible = false
+        Frame.Size = UDim2.new(0, 260, 0, 25)
+        ToggleBtn.Text = "▢"
+    else
+        Content.Visible = true
+        Frame.Size = UDim2.new(0, 260, 0, 180)
+        ToggleBtn.Text = "_"
+    end
+end)
+
+local function setStatus(text, color)
+    task.spawn(function()
+        StatusLabel.Text = text
+        StatusLabel.TextColor3 = color or Color3.fromRGB(180, 180, 180)
+    end)
+end
+
+-- === ПОИСК ИГРОКА ===
+local function findPlayer(query)
+    query = query:lower()
+    if query == "" then return nil end
+    local best, bestP = nil, 999
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == player then continue end
+        local n = p.Name:lower()
+        local d = p.DisplayName:lower()
+        local pr = 999
+        if n == query then pr = 1
+        elseif n:sub(1, #query) == query then pr = 2
+        elseif d:sub(1, #query) == query then pr = 3
+        elseif n:find(query, 1, true) then pr = 4
+        elseif d:find(query, 1, true) then pr = 5
+        end
+        if pr < bestP then bestP = pr; best = p end
+    end
+    return best
+end
+
+-- === ТП ПЕРЕД ЛИЦОМ (рывками) ===
+local function smoothTeleport(target)
+    local targetChar = target.Character
+    local myChar = player.Character
+    if not targetChar or not myChar then return false end
+    
+    local targetRoot = targetChar:FindFirstChild("HumanoidRootPart")
+    local myRoot = myChar:FindFirstChild("HumanoidRootPart")
+    if not targetRoot or not myRoot then return false end
+    
+    local STEP = 30
+    local DELAY = 0.05
+    local maxIter = 200
+    
+    for i = 1, maxIter do
+        if not targetRoot.Parent or not myRoot.Parent then return false end
+        
+        local finalPos = targetRoot.Position + (targetRoot.CFrame.LookVector * 3.5)
+        local myPos = myRoot.Position
+        local dist = (finalPos - myPos).Magnitude
+        
+        if dist <= STEP then
+            myRoot.CFrame = CFrame.lookAt(finalPos, targetRoot.Position)
+            return true
+        end
+        
+        local dir = (finalPos - myPos).Unit
+        myRoot.CFrame = CFrame.lookAt(myPos + (dir * STEP), targetRoot.Position)
+        task.wait(DELAY)
+    end
+    return false
+end
+
+-- === СБРОС ВСЕХ ДЕНЕГ ===
+local function dropAllMoney()
+    local hud = player.PlayerGui:FindFirstChild("HUD")
+    if not hud then return false end
+    local main = hud:FindFirstChild("Main")
+    if not main then return false end
+    local dropFrame = main:FindFirstChild("DropMoney")
+    if not dropFrame then return false end
+    
+    -- Читаем баланс
+    local moneyLabel = dropFrame:FindFirstChild("Money")
+    if not moneyLabel then return false end
+    local balance = tonumber(moneyLabel.Text:match("%d+")) or 0
+    if balance <= 0 then return false end
+    
+    print("💰 Баланс:", balance)
+    
+    -- Открываем окно
+    dropFrame.Visible = true
+    task.wait(0.3)
+    
+    -- Поле ввода
+    local input = dropFrame:FindFirstChild("DropAmount") 
+               or dropFrame:FindFirstChildOfClass("TextBox")
+    if not input then return false end
+    
+    input.Visible = true
+    task.wait(0.2)
+    input:CaptureFocus()
+    task.wait(0.2)
+    input.Text = ""
+    task.wait(0.1)
+    input.Text = tostring(balance)
+    task.wait(0.3)
+    
+    -- Enter
+    VIM:SendKeyEvent(true, Enum.KeyCode.Return, false, game)
+    task.wait(0.1)
+    VIM:SendKeyEvent(false, Enum.KeyCode.Return, false, game)
+    task.wait(0.5)
+    
+    dropFrame.Visible = false
+    return true
+end
+
+-- === ОТПРАВКА ТРЕЙДА ===
+local function sendTrade(target)
+    local living = workspace:WaitForChild("Living", 5)
+    if not living then return false end
+    local myFolder = living:FindFirstChild(player.Name)
+    if not myFolder then return false end
+    local remote = myFolder:FindFirstChild("RemoteFunction")
+    if not remote then return false end
+    
+    remote:InvokeServer("InitiateCosmeticTrade", target.Name)
+    return true
+end
+
+-- === ПОЛНЫЙ ЦИКЛ ===
+local function fullCycle()
+    local query = NameInput.Text:gsub("^%s*(.-)%s*$", "%1")
+    
+    if query == "" then
+        setStatus("❌ Введи ник!", Color3.fromRGB(255, 75, 75))
+        return
+    end
+    
+    setStatus("🔍 Ищу '" .. query .. "'...", Color3.fromRGB(255, 200, 75))
+    local target = findPlayer(query)
+    if not target then
+        setStatus("❌ Игрок не найден", Color3.fromRGB(255, 75, 75))
+        return
+    end
+    setStatus("✅ Найден: " .. target.Name, Color3.fromRGB(75, 255, 75))
+    task.wait(0.3)
+    
+    -- ТП
+    setStatus("⏳ ТП рывками...", Color3.fromRGB(255, 200, 75))
+    smoothTeleport(target)
+    task.wait(0.5)
+    
+    -- СБРОС
+    setStatus("⏳ Сброс всех денег...", Color3.fromRGB(255, 200, 75))
+    local dropped = dropAllMoney()
+    task.wait(0.5)
+    
+    -- ТРЕЙД
+    setStatus("⏳ Отправляю трейд...", Color3.fromRGB(255, 200, 75))
+    sendTrade(target)
+    
+    if dropped then
+        setStatus("✅ ТП + СБРОС + ТРЕЙД ВЫПОЛНЕНО!", Color3.fromRGB(75, 255, 75))
+    else
+        setStatus("⚠️ Трейд отправлен, но деньги не сброшены", Color3.fromRGB(255, 200, 75))
+    end
+end
+
+-- === КНОПКА ===
+StartBtn.MouseButton1Click:Connect(function()
+    task.spawn(fullCycle)
+end)
+
+print("✅ YBA AUTO загружен")
