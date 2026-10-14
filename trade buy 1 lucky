@@ -1,0 +1,267 @@
+-- === YBA AUTO v4 — КУПИТЬ 1 ЛАКИ + ТРЕЙД ===
+local CoreGui = game:GetService("CoreGui")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+if CoreGui:FindFirstChild("YBAFull") then
+    CoreGui.YBAFull:Destroy()
+end
+
+-- === GUI ===
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "YBAFull"
+ScreenGui.Parent = CoreGui
+ScreenGui.ResetOnSpawn = false
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 240, 0, 180)
+Frame.Position = UDim2.new(0, 50, 0, 100)
+Frame.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+Frame.BorderSizePixel = 2
+Frame.BorderColor3 = Color3.fromRGB(80, 80, 80)
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -30, 0, 25)
+Title.Text = "  YBA AUTO"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 13
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.BorderSizePixel = 0
+Title.Parent = Frame
+
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0, 30, 0, 25)
+ToggleBtn.Position = UDim2.new(1, -30, 0, 0)
+ToggleBtn.Text = "_"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+ToggleBtn.Font = Enum.Font.SourceSansBold
+ToggleBtn.TextSize = 16
+ToggleBtn.BorderSizePixel = 0
+ToggleBtn.Parent = Frame
+
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, 0, 1, -25)
+Content.Position = UDim2.new(0, 0, 0, 25)
+Content.BackgroundTransparency = 1
+Content.Parent = Frame
+
+local NameInput = Instance.new("TextBox")
+NameInput.Size = UDim2.new(0, 200, 0, 30)
+NameInput.Position = UDim2.new(0, 20, 0, 10)
+NameInput.PlaceholderText = "Ник (первые буквы)"
+NameInput.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+NameInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+NameInput.Font = Enum.Font.SourceSans
+NameInput.TextSize = 14
+NameInput.ClearTextOnFocus = false
+NameInput.Parent = Content
+
+local BuyBtn = Instance.new("TextButton")
+BuyBtn.Size = UDim2.new(0, 200, 0, 40)
+BuyBtn.Position = UDim2.new(0, 20, 0, 50)
+BuyBtn.Text = "💰 КУПИТЬ 1 ЛАКИ"
+BuyBtn.BackgroundColor3 = Color3.fromRGB(180, 130, 0)
+BuyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BuyBtn.Font = Enum.Font.SourceSansBold
+BuyBtn.TextSize = 13
+BuyBtn.Parent = Content
+
+local TradeBtn = Instance.new("TextButton")
+TradeBtn.Size = UDim2.new(0, 200, 0, 40)
+TradeBtn.Position = UDim2.new(0, 20, 0, 95)
+TradeBtn.Text = "📦 ОТПРАВИТЬ ТРЕЙД"
+TradeBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+TradeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+TradeBtn.Font = Enum.Font.SourceSansBold
+TradeBtn.TextSize = 13
+TradeBtn.Parent = Content
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(1, -20, 0, 30)
+StatusLabel.Position = UDim2.new(0, 10, 0, 145)
+StatusLabel.Text = "Готов"
+StatusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Font = Enum.Font.SourceSans
+StatusLabel.TextSize = 11
+StatusLabel.TextWrapped = true
+StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
+StatusLabel.Parent = Content
+
+-- === СВОРАЧИВАНИЕ ===
+local isMinimized = false
+ToggleBtn.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    if isMinimized then
+        Content.Visible = false
+        Frame.Size = UDim2.new(0, 240, 0, 25)
+        ToggleBtn.Text = "▢"
+    else
+        Content.Visible = true
+        Frame.Size = UDim2.new(0, 240, 0, 180)
+        ToggleBtn.Text = "_"
+    end
+end)
+
+local function setStatus(text, color)
+    task.spawn(function()
+        StatusLabel.Text = text
+        StatusLabel.TextColor3 = color or Color3.fromRGB(180, 180, 180)
+    end)
+end
+
+-- === УТИЛИТА: нажать кнопку ===
+local function trigger(obj)
+    local sig = obj.MouseButton1Down
+    if sig then
+        local ok, conns = pcall(function() return getconnections(sig) end)
+        if ok and conns and #conns > 0 then
+            local ok2 = pcall(function() conns[1].Function() end)
+            if ok2 then return true end
+        end
+    end
+    sig = obj.MouseButton1Click
+    if sig then
+        local ok, conns = pcall(function() return getconnections(sig) end)
+        if ok and conns and #conns > 0 then
+            local ok2 = pcall(function() conns[1].Function() end)
+            if ok2 then return true end
+        end
+    end
+    return false
+end
+
+-- === ПОИСК ИГРОКА ===
+local function findPlayer(query)
+    query = query:lower()
+    if query == "" then return nil end
+    local best, bestP = nil, 999
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p == player then continue end
+        local n = p.Name:lower()
+        local d = p.DisplayName:lower()
+        local pr = 999
+        if n == query then pr = 1
+        elseif n:sub(1, #query) == query then pr = 2
+        elseif d:sub(1, #query) == query then pr = 3
+        elseif n:find(query, 1, true) then pr = 4
+        elseif d:find(query, 1, true) then pr = 5
+        end
+        if pr < bestP then bestP = pr; best = p end
+    end
+    return best
+end
+
+-- === КУПИТЬ 1 ЛАКИ ===
+local function buyOneLucky()
+    local main = player.PlayerGui.HUD.Main
+    local store = main.Frames:FindFirstChild("Store")
+    if not store then setStatus("❌ Store не найден", Color3.fromRGB(255, 75, 75)) return end
+    
+    -- Открываем магазин
+    setStatus("⏳ Открываю магазин...", Color3.fromRGB(255, 200, 75))
+    local toggleStore = main:FindFirstChild("ToggleStore")
+    if toggleStore then trigger(toggleStore) end
+    task.wait(1.5)
+    
+    -- Прокрутка
+    setStatus("⏳ Прокручиваю до ItemShop...", Color3.fromRGB(255, 200, 75))
+    local list = store:FindFirstChild("List")
+    if list then
+        list.CanvasPosition = Vector2.new(0, 700)
+        task.wait(0.5)
+    end
+    
+    local itemShop = list and list:FindFirstChild("ItemShop")
+    if not itemShop then 
+        setStatus("❌ ItemShop не найден", Color3.fromRGB(255, 75, 75))
+        return 
+    end
+    
+    -- Покупаем 1 раз
+    local arrow = itemShop:FindFirstChild("1x Lucky Arrow", true)
+    if not arrow then 
+        setStatus("❌ Lucky Arrow не найдена", Color3.fromRGB(255, 75, 75))
+        return 
+    end
+    
+    setStatus("⏳ Клик по Lucky Arrow...", Color3.fromRGB(255, 200, 75))
+    trigger(arrow)
+    task.wait(1.5)
+    
+    -- Confirmation
+    local confirm = store:FindFirstChild("Confirmation")
+    if not confirm or not confirm.Visible then
+        setStatus("⚠️ Confirmation не появился", Color3.fromRGB(255, 200, 75))
+        if toggleStore then trigger(toggleStore) end
+        return
+    end
+    
+    setStatus("⏳ Клик по Yes...", Color3.fromRGB(255, 200, 75))
+    local yes = confirm:FindFirstChild("Yes")
+    if yes then
+        trigger(yes)
+        task.wait(1.5)
+    end
+    
+    -- Закрываем магазин
+    if toggleStore then trigger(toggleStore) end
+    
+    -- Проверяем
+    task.wait(0.5)
+    local count = 0
+    for _, item in ipairs(player.Backpack:GetChildren()) do
+        if item.Name == "Lucky Arrow" then count = count + 1 end
+    end
+    
+    setStatus("✅ Куплено! Лаки в Backpack: " .. count, Color3.fromRGB(75, 255, 75))
+end
+
+-- === ОТПРАВИТЬ ТРЕЙД ===
+local function sendTrade()
+    local query = NameInput.Text:gsub("^%s*(.-)%s*$", "%1")
+    
+    if query == "" then
+        setStatus("❌ Введи ник!", Color3.fromRGB(255, 75, 75))
+        return
+    end
+    
+    setStatus("🔍 Ищу '" .. query .. "'...", Color3.fromRGB(255, 200, 75))
+    local target = findPlayer(query)
+    if not target then
+        setStatus("❌ Игрок '" .. query .. "' не найден", Color3.fromRGB(255, 75, 75))
+        return
+    end
+    
+    setStatus("✅ Найден: " .. target.Name, Color3.fromRGB(75, 255, 75))
+    task.wait(0.3)
+    
+    local living = workspace:WaitForChild("Living", 5)
+    if not living then setStatus("❌ Living не найден", Color3.fromRGB(255, 75, 75)) return end
+    local myFolder = living:FindFirstChild(player.Name)
+    if not myFolder then setStatus("❌ Папка не найдена", Color3.fromRGB(255, 75, 75)) return end
+    local remote = myFolder:FindFirstChild("RemoteFunction")
+    if not remote then setStatus("❌ Remote не найден", Color3.fromRGB(255, 75, 75)) return end
+    
+    setStatus("⏳ Отправляю трейд...", Color3.fromRGB(255, 200, 75))
+    remote:InvokeServer("InitiateCosmeticTrade", target.Name)
+    
+    setStatus("✅ Трейд отправлен " .. target.Name, Color3.fromRGB(75, 255, 75))
+end
+
+-- === КНОПКИ ===
+BuyBtn.MouseButton1Click:Connect(function()
+    task.spawn(buyOneLucky)
+end)
+
+TradeBtn.MouseButton1Click:Connect(function()
+    task.spawn(sendTrade)
+end)
+
+print("✅ YBA AUTO v4 загружен")
